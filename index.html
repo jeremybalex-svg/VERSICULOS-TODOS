@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Versículos De Memoria </title>
+<title>Versículos De Memoria</title>
 <style>
   body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:16px;line-height:1.45}
   h3{margin-top:0}
@@ -32,17 +32,26 @@
   .btn-link{background:none;border:none;color:#0066cc;cursor:pointer;padding:0;font-size:0.95rem}
   .category-badge{display:inline-block;padding:4px 8px;border-radius:12px;background:#eef;border:1px solid #cce;margin-right:6px;font-size:0.85rem}
   .filter-select{padding:6px;border-radius:6px;border:1px solid #ccc}
+  .controls-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .muted{color:#666;font-size:0.9rem}
+  .selector-container{display:flex;gap:12px}
+  .selector-list{flex:1;max-height:55vh;overflow:auto;border-top:1px solid #eee;padding-top:8px}
+  .selected-summary{width:320px;border-left:1px solid #eee;padding-left:12px;max-height:55vh;overflow:auto}
+  .selected-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0}
+  #completedList{margin-top:12px;padding:8px;border:1px dashed #cfc;background:#f7fff7;border-radius:6px}
 </style>
 </head>
 <body>
 
-<h3>Versículos — Categorías (Fix)</h3>
+<h3>Versículos De Memoria</h3>
 
 <div class="controls">
   <label class="small">Meta diaria:
     <input id="dailyGoal" type="number" min="1" value="5" style="width:70px"/>
   </label>
+
   <label class="toggle small"><input id="enableSRS" type="checkbox" checked/> Usar SRS</label>
+
   <label class="small">Filtrar categoría:
     <select id="categoryFilter" class="filter-select">
       <option value="all">Todas</option>
@@ -50,15 +59,19 @@
       <option value="visiones">Visiones</option>
     </select>
   </label>
-  <button id="startBtn">Iniciar sesión</button>
-  <button id="openSelector" class="small-btn">Modo libre</button>
-  <button id="viewHistory" class="small-btn">Ver historial</button>
-  <button id="exportHistory" class="small-btn">Exportar historial</button>
-  <button id="forceResetPracticed" class="small-btn">Forzar reinicio practiced</button>
-  <button id="resetProgress">Reset progreso</button>
+
+  <div class="controls-right">
+    <button id="startBtn">Iniciar sesión</button>
+    <button id="openSelector" class="small-btn">Modo libre</button>
+    <button id="showAllBtn" class="small-btn">Mostrar todos (selector)</button>
+    <button id="viewHistory" class="small-btn">Ver historial</button>
+    <button id="exportHistory" class="small-btn">Exportar historial</button>
+    <button id="forceResetPracticed" class="small-btn">Forzar reinicio practiced</button>
+    <button id="resetProgress">Reset progreso</button>
+  </div>
 </div>
 
-<p class="small">Cambia la categoría en cualquier momento; la cola se reconstruye para mostrar solo los versículos de la categoría seleccionada.</p>
+<p class="small">El buscador del selector no borra las selecciones. Usa la columna derecha para ver y gestionar lo que has marcado.</p>
 
 <hr/>
 
@@ -70,9 +83,15 @@
 
   <div style="display:flex;gap:8px;align-items:center">
     <button id="checkBtn">Comprobar</button>
+    <button id="dontKnowBtn" class="small-btn">No me lo sé</button>
     <button id="skipBtn">Saltar</button>
     <button id="nextBtn" style="display:none">Siguiente</button>
     <div id="feedback" class="small" style="margin-left:12px"></div>
+  </div>
+
+  <div id="completedList" class="small" style="display:none">
+    <strong>Completados 100%:</strong>
+    <div id="completedItems" style="margin-top:8px"></div>
   </div>
 </div>
 
@@ -82,14 +101,25 @@
 <div id="selectorModal" aria-hidden="true">
   <h4>Seleccionar versículos</h4>
   <input id="selectorSearch" class="search-input" placeholder="Buscar por referencia, texto o categoría..." />
-  <div style="margin-bottom:8px">
+  <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">
     <button id="selectAllBtn" class="small-btn">Seleccionar todo</button>
     <button id="clearSelectionBtn" class="small-btn">Limpiar</button>
     <button id="addSelectedBtn" class="small-btn">Añadir seleccionados</button>
     <button id="practiceSelectedBtn" class="small-btn">Practicar seleccionados</button>
     <button id="closeSelectorBtn" class="small-btn">Cerrar</button>
+    <div style="margin-left:auto" class="muted">Seleccionados: <span id="selectedCount">0</span></div>
   </div>
-  <div id="selectorList" style="max-height:55vh;overflow:auto;border-top:1px solid #eee;padding-top:8px"></div>
+
+  <div class="selector-container">
+    <div class="selector-list" id="selectorList"></div>
+    <div class="selected-summary" id="selectedSummary">
+      <strong>Lista de seleccionados</strong>
+      <div id="selectedListItems" style="margin-top:8px"></div>
+      <div style="margin-top:8px">
+        <button id="clearSelectedBtn" class="small-btn">Quitar todos</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Modal: Verse quick view -->
@@ -97,17 +127,21 @@
   <h4 id="verseModalRef">Referencia</h4>
   <div id="verseModalText" style="margin-bottom:12px"></div>
   <div style="display:flex;gap:8px">
-    <button id="verseAddBtn" class="small-btn">Añadir</button>
+    <button id="verseAddBtn" class="small-btn">Añadir a la cola</button>
     <button id="versePracticeNowBtn" class="small-btn">Practicar ahora</button>
+    <button id="verseDontKnowBtn" class="small-btn">No me lo sé</button>
     <button id="verseCloseBtn" class="small-btn">Cerrar</button>
   </div>
 </div>
 
 <script>
 /* =========================
-   Lista completa de versículos (110) con ref y text
+   Inicialización y datos
    ========================= */
-const verses = [
+window.addEventListener('DOMContentLoaded', () => {
+
+  // Lista completa (usa tu lista real; aquí está incluida la tuya)
+  const verses = [
 {ref:"Génesis 1:1", text:"En el principio creó Dios el cielo y la tierra."},
 {ref:"Josué 1:8", text:"El libro de esta ley nunca se apartará de tu boca: antes de día y de noche meditarás en él, para que guardes y hagas conforme a todo lo que en él está escrito: porque entonces harás prosperar tu camino, y todo te saldrá bien."},
 {ref:"Josué 1:9", text:"Mira que te mando que te esfuerces y seas valiente: no temas ni desmayes, porque el SEÑOR tu Dios es contigo en donde quiera que fueres."},
@@ -219,473 +253,583 @@ const verses = [
 {ref:"Hebreos 11:33", text:"Los cuales por fe sojuzgaron reinos, obraron justicia, alcanzaron promesas, taparon las bocas de leones,"},
 {ref:"1 Pedro 2:20", text:"Porque ¿qué gloria es, si pecando vosotros sois abofeteados, y lo sufrís? pero si haciendo bien, sois afligidos, y lo sufrís, esto es cierto agradable delante de Dios."},
 {ref:"Colosenses 3:2", text:"Poned vuestro afecto en las cosas de arriba, no en las de la tierra."}
-];
+  ];
 
-/* =========================
-   Listas de categoría exactas (corregidas)
-   ========================= */
-const categoryLists = {
-  discipulado: [
-    "Romanos 10:9-10","Romanos 8:38-39","2 Timoteo 3:16-17","Filipenses 4:6",
-    "2 Corintios 13:14","Gálatas 5:16","Efesios 4:12","1 Corintios 12:13",
-    "2 Corintios 9:7","2 Corintios 5:18","2 Corintios 5:10","Colosenses 3:23-24"
-  ],
-  visiones: [
-    "Colosenses 2:6","Efesios 2:20-21","Nehemías 4:18","Efesios 4:3","1 Corintios 15:58",
-    "2 Tesalonicenses 2:15","2 Timoteo 2:15","Filipenses 4:4","1 Tesalonicenses 5:6",
-    "Filipenses 1:10","1 Timoteo 4:7","Hebreos 11:33","Gálatas 6:2","Salmo 37:4",
-    "Lucas 14:28","1 Crónicas 28:20","Colosenses 3:23-24","1 Tesalonicenses 5:23",
-    "Proverbios 27:17","1 Corintios 14:40","2 Corintios 7:1","Colosenses 3:2"
-  ]
-};
+  /* =========================
+     Categorías (igual que antes)
+     ========================= */
+  const categoryLists = {
+    discipulado: [
+      "Romanos 10:9-10","Romanos 8:38-39","2 Timoteo 3:16-17","Filipenses 4:6",
+      "2 Corintios 13:14","Gálatas 5:16","Efesios 4:12","1 Corintios 12:13",
+      "2 Corintios 9:7","2 Corintios 5:18","2 Corintios 5:10","Colosenses 3:23-24"
+    ],
+    visiones: [
+      "Colosenses 2:6","Efesios 2:20-21","Nehemías 4:18","Efesios 4:3","1 Corintios 15:58",
+      "2 Tesalonicenses 2:15","2 Timoteo 2:15","Filipenses 4:4","1 Tesalonicenses 5:6",
+      "Filipenses 1:10","1 Timoteo 4:7","Hebreos 11:33","Gálatas 6:2","Salmo 37:4",
+      "Lucas 14:28","1 Crónicas 28:20","Colosenses 3:23-24","1 Tesalonicenses 5:23",
+      "Proverbios 27:17","1 Corintios 14:40","2 Corintios 7:1","Colosenses 3:2"
+    ]
+  };
 
-/* =========================
-   Normalización robusta de referencias
-   ========================= */
-function normalizeRef(r){
-  if(!r) return '';
-  let s = r.normalize('NFD').replace(/[\u0300-\u036f]/g,''); // quitar acentos
-  s = s.replace(/[\u2013\u2014]/g,'-'); // guiones largos
-  s = s.replace(/[()\.,\/\\\u2018\u2019\u201C\u201D]/g,''); // quitar símbolos
-  s = s.replace(/\s+/g,' ').trim().toLowerCase();
-  return s;
-}
-
-/* =========================
-   Asignar categorías exactas a cada versículo
-   ========================= */
-function tagCategories(){
-  const map = {};
-  for(const cat of Object.keys(categoryLists)){
-    map[cat] = new Set(categoryLists[cat].map(normalizeRef));
+  function normalizeRef(r){
+    if(!r) return '';
+    let s = r.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    s = s.replace(/[\u2013\u2014]/g,'-');
+    s = s.replace(/[()\.,\/\\\u2018\u2019\u201C\u201D]/g,'');
+    s = s.replace(/\s+/g,' ').trim().toLowerCase();
+    return s;
   }
-  verses.forEach(v=>{
-    const nref = normalizeRef(v.ref);
-    v.categories = [];
-    for(const cat of Object.keys(map)){
-      if(map[cat].has(nref)) v.categories.push(cat);
+
+  function tagCategories(){
+    const map = {};
+    for(const cat of Object.keys(categoryLists)) map[cat] = new Set(categoryLists[cat].map(normalizeRef));
+    verses.forEach(v=>{
+      const nref = normalizeRef(v.ref);
+      v.categories = [];
+      for(const cat of Object.keys(map)) if(map[cat].has(nref)) v.categories.push(cat);
+    });
+  }
+  tagCategories();
+
+  /* =========================
+     Estado y persistencia
+     ========================= */
+  let currentCategory = 'all';
+  let queue = [];
+  let errorsQueue = [];
+  let practiced = new Set();
+  let difficulty = {};
+  let history = {};
+  let currentIndex = null;
+
+  const STORAGE_KEY = 'versiculos_selector_state_v1';
+  const DATE_KEY = 'versiculos_selector_date_v1';
+
+  function saveState(){
+    const state = {
+      queue, errorsQueue, practiced: Array.from(practiced),
+      difficulty, history, currentIndex, currentCategory,
+      dailyGoal: document.getElementById('dailyGoal').value
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+  function loadState(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    try{
+      const s = JSON.parse(raw);
+      queue = s.queue || [];
+      errorsQueue = s.errorsQueue || [];
+      practiced = new Set(s.practiced || []);
+      difficulty = s.difficulty || {};
+      history = s.history || {};
+      currentIndex = s.currentIndex;
+      if(s.currentCategory) currentCategory = s.currentCategory;
+      if(s.dailyGoal) document.getElementById('dailyGoal').value = s.dailyGoal;
+      queue = queue.filter(i => matchesCurrentCategory(i));
+      errorsQueue = errorsQueue.filter(i => matchesCurrentCategory(i));
+      return true;
+    }catch(e){ console.error(e); return false; }
+  }
+
+  /* =========================
+     Normalize text (compatible Safari)
+     ========================= */
+  function normalizeText(s){
+    if(!s) return '';
+    s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    s = s.replace(/[^A-Za-z0-9\u00C0-\u017F\s]/g, ' ');
+    s = s.toLowerCase().replace(/\s+/g,' ').trim();
+    return s;
+  }
+  function tokenize(s){ return s.length? s.split(' ') : []; }
+  function compareVerses(expected, actual){
+    const ne = normalizeText(expected);
+    const na = normalizeText(actual);
+    const te = tokenize(ne);
+    const ta = tokenize(na);
+    const diffs = [];
+    const max = Math.max(te.length, ta.length);
+    let correctCount = 0;
+    for(let i=0;i<max;i++){
+      const we = te[i] || null;
+      const wa = ta[i] || null;
+      if(we === wa && we !== null){ diffs.push({type:'ok', expected:we, actual:wa}); correctCount++; }
+      else if(we !== wa && wa === null){ diffs.push({type:'missing', expected:we, actual:''}); }
+      else if(we !== wa && we === null){ diffs.push({type:'extra', expected:'', actual:wa}); }
+      else { diffs.push({type:'wrong', expected:we, actual:wa}); }
+    }
+    const allOk = diffs.every(d=>d.type==='ok');
+    return {allOk, diffs, score: correctCount/Math.max(1,te.length)};
+  }
+
+  /* =========================
+     Reencolado diferido (igual que antes)
+     ========================= */
+  function scheduleRequeue(idx, options = {}){
+    const minAhead = options.minAhead || 2;
+    const maxAhead = options.maxAhead || 6;
+    const allowDuplicates = options.allowDuplicates || false;
+    if(!allowDuplicates) queue = queue.filter(i => i !== idx);
+    if(!errorsQueue.includes(idx)) errorsQueue.push(idx);
+    if(queue.length === 0){ queue.push(idx); return; }
+    const ahead = Math.floor(Math.random() * (maxAhead - minAhead + 1)) + minAhead;
+    let insertPos = ahead;
+    if(insertPos > queue.length) insertPos = queue.length;
+    queue.splice(insertPos, 0, idx);
+  }
+
+  function ensureDifficulty(){ for(let i=0;i<verses.length;i++){ if(!(i in difficulty)) difficulty[i] = 0; } }
+  function recordDifficulty(idx, wasCorrect){
+    if(!(idx in difficulty)) difficulty[idx] = 0;
+    difficulty[idx] = wasCorrect ? Math.max(0, difficulty[idx]-1) : (difficulty[idx]||0)+1;
+    saveState();
+  }
+  function ensureHistoryForDate(date){ if(!history[date]) history[date] = {attempted:0, correct:0, errors:0, details: []}; }
+  function recordHistory(idx, result){
+    const today = new Date().toISOString().slice(0,10);
+    ensureHistoryForDate(today);
+    history[today].attempted++;
+    if(result === 'correct') history[today].correct++;
+    if(result === 'error') history[today].errors++;
+    history[today].details.push({idx, ref: verses[idx].ref, result, timestamp: new Date().toISOString()});
+    saveState();
+  }
+
+  function matchesCurrentCategory(idx){
+    if(currentCategory === 'all') return true;
+    const cats = verses[idx].categories || [];
+    return cats.includes(currentCategory);
+  }
+
+  function prepareDailyQueue(forceRebuild=false){
+    const goal = Math.max(1, parseInt(document.getElementById('dailyGoal').value||5));
+    const today = new Date().toISOString().slice(0,10);
+    const lastDate = localStorage.getItem(DATE_KEY);
+    if(lastDate !== today){
+      if(practiced.size >= verses.length) practiced = new Set();
+      localStorage.setItem(DATE_KEY, today);
+      queue = [];
+    }
+    ensureDifficulty();
+    if(queue.length === 0 || forceRebuild){
+      let available = verses.map((v,i)=>i).filter(i => !practiced.has(i) && matchesCurrentCategory(i));
+      if(available.length === 0){
+        practiced = new Set();
+        available = verses.map((v,i)=>i).filter(i => matchesCurrentCategory(i));
+      }
+      const useSRS = document.getElementById('enableSRS').checked;
+      if(useSRS){
+        const reviewPool = verses.map((v,i)=>i).filter(i => practiced.has(i) && (difficulty[i]||0)>0 && matchesCurrentCategory(i));
+        available.sort((a,b) => (difficulty[b]||0) - (difficulty[a]||0));
+        for(let i=available.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [available[i],available[j]]=[available[j],available[i]]; }
+        const takeFromAvailable = Math.min(goal, available.length);
+        const takeFromReview = Math.min(Math.max(0, Math.floor(goal/3)), reviewPool.length);
+        const selected = available.slice(0, takeFromAvailable);
+        reviewPool.sort((a,b) => (difficulty[b]||0) - (difficulty[a]||0));
+        selected.push(...reviewPool.slice(0, takeFromReview));
+        queue = selected;
+      } else {
+        for(let i=available.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [available[i],available[j]]=[available[j],available[i]]; }
+        queue = available.slice(0, Math.min(goal, available.length));
+      }
+    } else {
+      queue = queue.filter(i => matchesCurrentCategory(i));
+      errorsQueue = errorsQueue.filter(i => matchesCurrentCategory(i));
+    }
+    document.getElementById('todayCount').textContent = queue.length;
+    updateQueueInfo();
+    saveState();
+  }
+
+  function getNextIndex(){ if(queue.length>0) return queue.shift(); if(errorsQueue.length>0) return errorsQueue.shift(); return null; }
+
+  function updateQueueInfo(){ document.getElementById('queueInfo').textContent = `En cola: ${queue.length}  Errores: ${errorsQueue.length}  Practicados: ${practiced.size}  (Filtro: ${currentCategory})`; }
+
+  /* =========================
+     NUEVO: estado del selector (persistente durante la sesión)
+     - selectedSet guarda índices seleccionados aunque filtres
+     - renderSelectedSummary muestra la lista lateral y el conteo
+     ========================= */
+  const selectedSet = new Set(); // índices seleccionados en modo libre
+  const completedPerfect = new Set(); // referencias completadas 100%
+
+  function renderSelectedSummary(){
+    const container = document.getElementById('selectedListItems');
+    const countEl = document.getElementById('selectedCount');
+    const arr = Array.from(selectedSet);
+    countEl.textContent = arr.length;
+    if(arr.length === 0){ container.innerHTML = '<div class="small muted">No hay versículos seleccionados.</div>'; return; }
+    container.innerHTML = '';
+    arr.forEach(idx=>{
+      const v = verses[idx];
+      const div = document.createElement('div');
+      div.className = 'selected-item';
+      div.innerHTML = `<div style="flex:1"><strong>${v.ref}</strong><div class="small">${v.text.slice(0,80)}${v.text.length>80?'...':''}</div></div>
+        <div style="margin-left:8px"><button class="small-btn remove-selected" data-idx="${idx}">Quitar</button></div>`;
+      container.appendChild(div);
+    });
+    // enlazar botones quitar
+    container.querySelectorAll('.remove-selected').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const idx = parseInt(b.getAttribute('data-idx'));
+        selectedSet.delete(idx);
+        // actualizar checkbox si está visible
+        const cb = document.querySelector(`.selector-checkbox[data-idx="${idx}"]`);
+        if(cb) cb.checked = false;
+        renderSelectedSummary();
+      });
+    });
+  }
+
+  /* =========================
+     Selector: render y comportamiento (preserva selectedSet)
+     ========================= */
+  const selectorModal = document.getElementById('selectorModal');
+  const selectorList = document.getElementById('selectorList');
+  const selectorSearch = document.getElementById('selectorSearch');
+
+  document.getElementById('openSelector').addEventListener('click', ()=>{ renderSelectorList(false); document.getElementById('overlay').style.display='block'; selectorModal.style.display='block'; });
+  document.getElementById('showAllBtn').addEventListener('click', ()=>{ renderSelectorList(true); document.getElementById('overlay').style.display='block'; selectorModal.style.display='block'; });
+  document.getElementById('closeSelectorBtn').addEventListener('click', ()=>{ selectorModal.style.display='none'; document.getElementById('overlay').style.display='none'; });
+
+  document.getElementById('selectAllBtn').addEventListener('click', ()=>{
+    // seleccionar todos los visibles
+    selectorList.querySelectorAll('.selector-checkbox').forEach(cb=>{
+      cb.checked = true;
+      selectedSet.add(parseInt(cb.getAttribute('data-idx')));
+    });
+    renderSelectedSummary();
+  });
+  document.getElementById('clearSelectionBtn').addEventListener('click', ()=>{
+    // limpiar visibles y selectedSet
+    selectorList.querySelectorAll('.selector-checkbox').forEach(cb=>{
+      cb.checked = false;
+    });
+    // si quieres limpiar todo seleccionado:
+    // selectedSet.clear();
+    // renderSelectedSummary();
+    // pero aquí solo limpiamos visibles:
+    const visibleIdx = Array.from(selectorList.querySelectorAll('.selector-checkbox')).map(cb=>parseInt(cb.getAttribute('data-idx')));
+    visibleIdx.forEach(i => selectedSet.delete(i));
+    renderSelectedSummary();
+  });
+
+  document.getElementById('clearSelectedBtn').addEventListener('click', ()=>{
+    selectedSet.clear();
+    // limpiar checkboxes visibles
+    selectorList.querySelectorAll('.selector-checkbox').forEach(cb=>cb.checked=false);
+    renderSelectedSummary();
+  });
+
+  selectorSearch.addEventListener('input', ()=> renderSelectorList(selectorModal.dataset.showAll === 'true'));
+
+  function renderSelectorList(forceAll){
+    const q = (selectorSearch.value || '').trim().toLowerCase();
+    selectorList.innerHTML = '';
+    const showAll = !!forceAll;
+    selectorModal.dataset.showAll = showAll ? 'true' : 'false';
+    verses.forEach((v, idx) => {
+      if(!showAll && !matchesCurrentCategory(idx)) return;
+      const cats = (v.categories || []).map(c => `<span class="category-badge">${c}</span>`).join(' ');
+      const textLower = (v.ref + ' ' + v.text + ' ' + (v.categories||[]).join(' ')).toLowerCase();
+      if(q && !textLower.includes(q)) return;
+      const row = document.createElement('div');
+      row.className = 'verse-row';
+      row.innerHTML = `
+        <input type="checkbox" data-idx="${idx}" class="selector-checkbox" />
+        <div class="verse-ref">${v.ref}<div style="margin-top:6px">${cats}</div></div>
+        <div class="verse-text">${v.text}</div>
+        <div class="selector-actions">
+          <button class="btn-link" data-action="view" data-idx="${idx}">Ver</button>
+          <button class="btn-link" data-action="add" data-idx="${idx}">Añadir</button>
+          <button class="btn-link" data-action="practice" data-idx="${idx}">Practicar ahora</button>
+        </div>
+      `;
+      selectorList.appendChild(row);
+    });
+
+    // Restaurar estado de checkboxes según selectedSet
+    selectorList.querySelectorAll('.selector-checkbox').forEach(cb=>{
+      const idx = parseInt(cb.getAttribute('data-idx'));
+      cb.checked = selectedSet.has(idx);
+      cb.addEventListener('change', ()=>{
+        if(cb.checked) selectedSet.add(idx); else selectedSet.delete(idx);
+        renderSelectedSummary();
+      });
+    });
+
+    // enlazar acciones
+    selectorList.querySelectorAll('[data-action]').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const action = btn.getAttribute('data-action');
+        const idx = parseInt(btn.getAttribute('data-idx'));
+        if(action === 'view') openVerseModal(idx);
+        if(action === 'add') { selectedSet.add(idx); renderSelectedSummary(); addSingleToQueue(idx); }
+        if(action === 'practice') { selectedSet.add(idx); renderSelectedSummary(); practiceSingleNow(idx); }
+      });
+    });
+
+    renderSelectedSummary();
+  }
+
+  /* =========================
+     Acciones con seleccionados
+     ========================= */
+  document.getElementById('addSelectedBtn').addEventListener('click', addSelectedToQueue);
+  document.getElementById('practiceSelectedBtn').addEventListener('click', practiceSelectedNow);
+
+  function addSelectedToQueue(){
+    const arr = Array.from(selectedSet);
+    if(arr.length === 0){ alert('No hay versículos seleccionados.'); return; }
+    let added = 0;
+    arr.forEach(idx=>{
+      if(!queue.includes(idx) && !errorsQueue.includes(idx)){
+        queue.push(idx); added++;
+      }
+    });
+    updateQueueInfo(); saveState();
+    alert(`${added} versículo(s) añadidos a la cola.`);
+  }
+
+  function practiceSelectedNow(){
+    const arr = Array.from(selectedSet);
+    if(arr.length === 0){ alert('No hay versículos seleccionados.'); return; }
+    // poner al frente en el orden seleccionado
+    arr.forEach(idx => { queue = queue.filter(x => x !== idx); errorsQueue = errorsQueue.filter(x => x !== idx); });
+    queue = arr.concat(queue);
+    saveState();
+    selectorModal.style.display='none'; document.getElementById('overlay').style.display='none';
+    document.getElementById('sessionArea').style.display='block';
+    const nextIdx = getNextIndex(); renderCard(nextIdx);
+  }
+
+  /* =========================
+     Vista rápida (modal)
+     ========================= */
+  const verseModal = document.getElementById('verseModal');
+  const verseModalRef = document.getElementById('verseModalRef');
+  const verseModalText = document.getElementById('verseModalText');
+  const verseAddBtn = document.getElementById('verseAddBtn');
+  const versePracticeNowBtn = document.getElementById('versePracticeNowBtn');
+  const verseDontKnowBtn = document.getElementById('verseDontKnowBtn');
+  const verseCloseBtn = document.getElementById('verseCloseBtn');
+
+  function openVerseModal(idx){
+    const v = verses[idx];
+    verseModalRef.textContent = v.ref;
+    verseModalText.textContent = v.text;
+    verseModal.style.display = 'block';
+    document.getElementById('overlay').style.display = 'block';
+    verseAddBtn.onclick = ()=>{ selectedSet.add(idx); renderSelectedSummary(); addSingleToQueue(idx); alert('Versículo añadido a la cola.'); };
+    versePracticeNowBtn.onclick = ()=>{ selectedSet.add(idx); renderSelectedSummary(); practiceSingleNow(idx); };
+    verseDontKnowBtn.onclick = ()=>{ selectedSet.add(idx); renderSelectedSummary(); scheduleRequeue(idx, {minAhead:2, maxAhead:6}); recordHistory(idx, 'error'); recordDifficulty(idx, false); saveState(); alert('Versículo mostrado y programado para repetición.'); };
+    verseCloseBtn.onclick = ()=>{ verseModal.style.display='none'; document.getElementById('overlay').style.display='none'; };
+  }
+
+  function addSingleToQueue(idx){
+    if(!queue.includes(idx) && !errorsQueue.includes(idx)) queue.push(idx);
+    updateQueueInfo(); saveState();
+  }
+  function practiceSingleNow(idx){
+    queue = queue.filter(x => x !== idx);
+    errorsQueue = errorsQueue.filter(x => x !== idx);
+    queue.unshift(idx);
+    saveState();
+    selectorModal.style.display='none'; document.getElementById('overlay').style.display='none';
+    document.getElementById('sessionArea').style.display='block';
+    const nextIdx = getNextIndex(); renderCard(nextIdx);
+  }
+
+  document.getElementById('overlay').addEventListener('click', ()=>{
+    if(selectorModal.style.display === 'block') selectorModal.style.display='none';
+    if(verseModal.style.display === 'block') verseModal.style.display='none';
+    if(document.getElementById('historyModal') && document.getElementById('historyModal').style.display === 'block') hideHistoryModal();
+    document.getElementById('overlay').style.display='none';
+  });
+
+  /* =========================
+     Flujo de práctica (igual que antes) con actualización de completados 100%
+     ========================= */
+  function renderCard(idx){
+    const container = document.getElementById('cardContainer');
+    container.innerHTML = '';
+    if(idx===null || idx===undefined){
+      container.innerHTML = '<div class="small">No hay más versículos para la selección actual.</div>';
+      document.getElementById('checkBtn').style.display='none';
+      document.getElementById('skipBtn').style.display='none';
+      document.getElementById('dontKnowBtn').style.display='none';
+      return;
+    }
+    currentIndex = idx;
+    const v = verses[idx];
+    const cats = (v.categories || []).map(c => `<span class="category-badge">${c}</span>`).join(' ');
+    const card = document.createElement('div');
+    card.className='verse-card';
+    card.innerHTML = `<div><strong>Referencia:</strong> ${v.ref} ${cats}</div>
+      <div class="small" style="margin-top:6px">Escribe el versículo (ignora acentos, puntuación y mayúsculas)</div>
+      <textarea id="answerArea" placeholder="Escribe aquí el versículo"></textarea>
+      <div id="resultArea" style="margin-top:8px"></div>`;
+    container.appendChild(card);
+    document.getElementById('checkBtn').style.display='inline-block';
+    document.getElementById('skipBtn').style.display='inline-block';
+    document.getElementById('dontKnowBtn').style.display='inline-block';
+    document.getElementById('nextBtn').style.display='none';
+    saveState();
+  }
+
+  function showDiffResult(res){
+    const ra = document.getElementById('resultArea'); ra.innerHTML = '';
+    const expDiv = document.createElement('div'); expDiv.innerHTML = '<strong>Comparación palabra a palabra:</strong>'; ra.appendChild(expDiv);
+    const line = document.createElement('div');
+    res.diffs.forEach(d=>{
+      const span = document.createElement('span'); span.className='diff-word';
+      if(d.type==='ok'){ span.classList.add('right'); span.textContent = d.expected; }
+      else if(d.type==='wrong'){ span.classList.add('wrong'); span.innerHTML = `<span class="diff-expected">${d.expected}</span> ≠ <span class="diff-missing">${d.actual}</span>`; }
+      else if(d.type==='missing'){ span.classList.add('wrong'); span.innerHTML = `<span class="diff-expected">${d.expected}</span> <span class="diff-missing">[faltó]</span>`; }
+      else if(d.type==='extra'){ span.classList.add('wrong'); span.innerHTML = `<span class="diff-missing">${d.actual}</span> <span class="diff-expected">[extra]</span>`; }
+      line.appendChild(span);
+    });
+    ra.appendChild(line);
+    const score = Math.round(res.score*100);
+    const summary = document.createElement('div'); summary.className='small'; summary.innerHTML = `Precisión: <strong>${score}%</strong>`; ra.appendChild(summary);
+  }
+
+  document.getElementById('checkBtn').addEventListener('click', ()=>{
+    const ans = document.getElementById('answerArea').value || '';
+    const v = verses[currentIndex];
+    const res = compareVerses(v.text, ans);
+    showDiffResult(res);
+    if(res.allOk){
+      practiced.add(currentIndex);
+      recordDifficulty(currentIndex, true);
+      recordHistory(currentIndex, 'correct');
+      // marcar completado 100%
+      completedPerfect.add(verses[currentIndex].ref);
+      updateCompletedList();
+      document.getElementById('feedback').textContent = 'Correcto'; document.getElementById('feedback').className='small right';
+      document.getElementById('nextBtn').style.display='inline-block'; document.getElementById('checkBtn').style.display='none'; document.getElementById('skipBtn').style.display='none'; document.getElementById('dontKnowBtn').style.display='none';
+    } else {
+      scheduleRequeue(currentIndex, {minAhead:2, maxAhead:6});
+      recordDifficulty(currentIndex, false);
+      recordHistory(currentIndex, 'error');
+      document.getElementById('feedback').textContent = 'Hay errores. Se repetirá más adelante.'; document.getElementById('feedback').className='small wrong';
+      document.getElementById('nextBtn').style.display='inline-block';
+    }
+    updateQueueInfo(); saveState();
+  });
+
+  document.getElementById('dontKnowBtn').addEventListener('click', ()=>{
+    const idx = currentIndex;
+    if(idx == null) return;
+    openVerseModal(idx);
+    scheduleRequeue(idx, {minAhead:2, maxAhead:6});
+    recordHistory(idx, 'error');
+    recordDifficulty(idx, false);
+    updateQueueInfo(); saveState();
+  });
+
+  document.getElementById('skipBtn').addEventListener('click', ()=>{
+    if(currentIndex != null){
+      scheduleRequeue(currentIndex, {minAhead:3, maxAhead:8});
+      recordHistory(currentIndex, 'error'); recordDifficulty(currentIndex, false);
+    }
+    document.getElementById('feedback').textContent = 'Saltado. Se repetirá más adelante.'; document.getElementById('feedback').className='small wrong';
+    saveState(); nextFlow();
+  });
+
+  document.getElementById('nextBtn').addEventListener('click', nextFlow);
+  function nextFlow(){ const nextIdx = getNextIndex(); if(nextIdx===null) renderCard(null); else renderCard(nextIdx); updateQueueInfo(); saveState(); }
+
+  /* =========================
+     Historial, export, categoría y demás (igual que antes)
+     ========================= */
+  document.getElementById('startBtn').addEventListener('click', ()=>{
+    document.getElementById('sessionArea').style.display='block';
+    prepareDailyQueue(true);
+    const nextIdx = getNextIndex();
+    renderCard(nextIdx);
+  });
+
+  document.getElementById('resetProgress').addEventListener('click', ()=>{
+    if(confirm('¿Deseas resetear todo el progreso (practiced, difficulty, historial)?')){
+      localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(DATE_KEY);
+      queue = []; errorsQueue = []; practiced = new Set(); difficulty = {}; history = {}; currentIndex = null; completedPerfect.clear();
+      document.getElementById('sessionArea').style.display='none'; updateCompletedList(); alert('Progreso reseteado completamente.');
     }
   });
-  // conteo para verificación
-  const counts = {discipulado:0, visiones:0};
-  verses.forEach(v => (v.categories||[]).forEach(c => { if(counts[c]!==undefined) counts[c]++; }));
-  console.log('Conteo etiquetas:', counts);
-  setTimeout(()=> alert(`Etiquetado: Discipulado = ${counts.discipulado}, Visiones = ${counts.visiones}`), 200);
-}
-tagCategories();
 
-/* =========================
-   Estado y filtro persistente
-   ========================= */
-let currentCategory = 'all';
-let queue = [];
-let errorsQueue = [];
-let practiced = new Set();
-let difficulty = {};
-let history = {};
-let currentIndex = null;
+  document.getElementById('forceResetPracticed').addEventListener('click', ()=>{
+    if(confirm('¿Forzar reinicio de la lista "practiced"?')){
+      practiced = new Set(); saveState(); alert('practiced reiniciado.');
+    }
+  });
 
-const STORAGE_KEY = 'versiculos_fix_state_v1';
-const DATE_KEY = 'versiculos_fix_date_v1';
+  document.getElementById('viewHistory').addEventListener('click', showHistoryModal);
+  document.getElementById('exportHistory').addEventListener('click', exportHistoryCSV);
 
-/* =========================
-   Utilidades de guardado/carga
-   ========================= */
-function saveState(){
-  const state = {
-    queue, errorsQueue, practiced: Array.from(practiced),
-    difficulty, history, currentIndex, currentCategory,
-    dailyGoal: document.getElementById('dailyGoal').value
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-function loadState(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if(!raw) return false;
-  try{
-    const s = JSON.parse(raw);
-    queue = s.queue || [];
-    errorsQueue = s.errorsQueue || [];
-    practiced = new Set(s.practiced || []);
-    difficulty = s.difficulty || {};
-    history = s.history || {};
-    currentIndex = s.currentIndex;
-    if(s.currentCategory) currentCategory = s.currentCategory;
-    if(s.dailyGoal) document.getElementById('dailyGoal').value = s.dailyGoal;
-    // Filtrar colas para que respeten el filtro cargado
-    queue = queue.filter(i => matchesCurrentCategory(i));
-    errorsQueue = errorsQueue.filter(i => matchesCurrentCategory(i));
-    return true;
-  }catch(e){ console.error(e); return false; }
-}
-
-/* =========================
-   Comparación de respuestas
-   ========================= */
-function normalizeText(s){
-  if(!s) return '';
-  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  s = s.replace(/[^\p{L}\p{N}\s]/gu, ' ');
-  s = s.toLowerCase().replace(/\s+/g,' ').trim();
-  return s;
-}
-function tokenize(s){ return s.length? s.split(' ') : []; }
-function compareVerses(expected, actual){
-  const ne = normalizeText(expected);
-  const na = normalizeText(actual);
-  const te = tokenize(ne);
-  const ta = tokenize(na);
-  const diffs = [];
-  const max = Math.max(te.length, ta.length);
-  let correctCount = 0;
-  for(let i=0;i<max;i++){
-    const we = te[i] || null;
-    const wa = ta[i] || null;
-    if(we === wa && we !== null){ diffs.push({type:'ok', expected:we, actual:wa}); correctCount++; }
-    else if(we !== wa && wa === null){ diffs.push({type:'missing', expected:we, actual:''}); }
-    else if(we !== wa && we === null){ diffs.push({type:'extra', expected:'', actual:wa}); }
-    else { diffs.push({type:'wrong', expected:we, actual:wa}); }
+  function showHistoryModal(){ const overlay = document.getElementById('overlay'); let modal = document.getElementById('historyModal'); if(!modal){ modal = document.createElement('div'); modal.id='historyModal'; modal.style.display='none'; document.body.appendChild(modal); } overlay.style.display='block'; modal.style.display='block';
+    modal.innerHTML = `<h4>Historial por día</h4><div class="small" style="margin-bottom:8px">Última fecha registrada: ${localStorage.getItem(DATE_KEY) || '—'}</div><div style="max-height:60vh;overflow:auto">${renderHistoryTable()}</div><div style="margin-top:12px;display:flex;gap:8px"><button id="closeHistory" class="small-btn">Cerrar</button><button id="clearHistory" class="small-btn">Borrar historial</button></div>`;
+    document.getElementById('closeHistory').addEventListener('click', hideHistoryModal);
+    document.getElementById('clearHistory').addEventListener('click', ()=>{ if(confirm('¿Borrar todo el historial?')){ history={}; saveState(); modal.innerHTML = `<h4>Historial por día</h4><div class="small">Historial borrado.</div><div style="margin-top:12px"><button id="closeHistory2" class="small-btn">Cerrar</button></div>`; document.getElementById('closeHistory2').addEventListener('click', hideHistoryModal); } });
   }
-  const allOk = diffs.every(d=>d.type==='ok');
-  return {allOk, diffs, score: correctCount/Math.max(1,te.length)};
-}
+  function hideHistoryModal(){ document.getElementById('overlay').style.display='none'; const modal = document.getElementById('historyModal'); if(modal) modal.style.display='none'; }
+  function renderHistoryTable(){ const dates = Object.keys(history).sort().reverse(); if(dates.length === 0) return '<div class="small">No hay historial registrado.</div>'; let html = '<table><thead><tr><th>Fecha</th><th>Intentos</th><th>Correctos</th><th>Errores</th><th>Detalles</th></tr></thead><tbody>'; for(const d of dates){ const day = history[d]; const details = (day.details || []).map(x => `${x.ref} (${x.result})`).join('<br/>'); html += `<tr><td>${d}</td><td>${day.attempted}</td><td>${day.correct}</td><td>${day.errors}</td><td>${details}</td></tr>`; } html += '</tbody></table>'; return html; }
+  function exportHistoryCSV(){ const rows = [['date','attempted','correct','errors','idx','ref','result','timestamp']]; for(const date of Object.keys(history).sort()){ const day = history[date]; if(day.details && day.details.length){ for(const d of day.details){ rows.push([date, day.attempted, day.correct, day.errors, d.idx, `"${d.ref.replace(/"/g,'""')}"`, d.result, d.timestamp]); } } else rows.push([date, day.attempted, day.correct, day.errors, '', '', '', '']); } const csv = rows.map(r => r.join(',')).join('\n'); const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'versiculos_historial.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
 
-/* =========================
-   Filtro actual: comprobar si un índice pertenece al filtro
-   ========================= */
-function matchesCurrentCategory(idx){
-  if(currentCategory === 'all') return true;
-  const cats = verses[idx].categories || [];
-  return cats.includes(currentCategory);
-}
-
-/* =========================
-   SRS y preparación de cola (siempre respeta currentCategory)
-   ========================= */
-function ensureDifficulty(){ for(let i=0;i<verses.length;i++){ if(!(i in difficulty)) difficulty[i] = 0; } }
-function recordDifficulty(idx, wasCorrect){
-  if(!(idx in difficulty)) difficulty[idx] = 0;
-  difficulty[idx] = wasCorrect ? Math.max(0, difficulty[idx]-1) : (difficulty[idx]||0)+1;
-  saveState();
-}
-function ensureHistoryForDate(date){ if(!history[date]) history[date] = {attempted:0, correct:0, errors:0, details: []}; }
-function recordHistory(idx, result){
-  const today = new Date().toISOString().slice(0,10);
-  ensureHistoryForDate(today);
-  history[today].attempted++;
-  if(result === 'correct') history[today].correct++;
-  if(result === 'error') history[today].errors++;
-  history[today].details.push({idx, ref: verses[idx].ref, result, timestamp: new Date().toISOString()});
-  saveState();
-}
-
-function prepareDailyQueue(forceRebuild=false){
-  const goal = Math.max(1, parseInt(document.getElementById('dailyGoal').value||5));
-  const today = new Date().toISOString().slice(0,10);
-  const lastDate = localStorage.getItem(DATE_KEY);
-  if(lastDate !== today){
-    if(practiced.size >= verses.length) practiced = new Set();
-    localStorage.setItem(DATE_KEY, today);
+  /* =========================
+     Cambio de categoría: reconstruye cola y aplica filtro inmediatamente
+     ========================= */
+  document.getElementById('categoryFilter').addEventListener('change', onCategoryChange);
+  function onCategoryChange(){
+    const sel = document.getElementById('categoryFilter').value;
+    currentCategory = sel;
     queue = [];
-  }
-  ensureDifficulty();
-  if(queue.length === 0 || forceRebuild){
+    errorsQueue = errorsQueue.filter(i => matchesCurrentCategory(i));
     let available = verses.map((v,i)=>i).filter(i => !practiced.has(i) && matchesCurrentCategory(i));
     if(available.length === 0){
       practiced = new Set();
       available = verses.map((v,i)=>i).filter(i => matchesCurrentCategory(i));
     }
-    const useSRS = document.getElementById('enableSRS').checked;
-    if(useSRS){
-      const reviewPool = verses.map((v,i)=>i).filter(i => practiced.has(i) && (difficulty[i]||0)>0 && matchesCurrentCategory(i));
-      available.sort((a,b) => (difficulty[b]||0) - (difficulty[a]||0));
-      for(let i=available.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [available[i],available[j]]=[available[j],available[i]]; }
-      const takeFromAvailable = Math.min(goal, available.length);
-      const takeFromReview = Math.min(Math.max(0, Math.floor(goal/3)), reviewPool.length);
-      const selected = available.slice(0, takeFromAvailable);
-      reviewPool.sort((a,b) => (difficulty[b]||0) - (difficulty[a]||0));
-      selected.push(...reviewPool.slice(0, takeFromReview));
-      queue = selected;
-    } else {
-      for(let i=available.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [available[i],available[j]]=[available[j],available[i]]; }
-      queue = available.slice(0, Math.min(goal, available.length));
+    for(let i=available.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [available[i],available[j]]=[available[j],available[i]]; }
+    const goal = Math.max(1, parseInt(document.getElementById('dailyGoal').value||5));
+    queue = available.slice(0, Math.min(goal, available.length));
+    updateQueueInfo(); saveState();
+    if(document.getElementById('sessionArea').style.display !== 'none'){
+      const nextIdx = getNextIndex(); renderCard(nextIdx);
     }
-  } else {
-    // si ya hay items, filtrar para que respeten el filtro actual
-    queue = queue.filter(i => matchesCurrentCategory(i));
-    errorsQueue = errorsQueue.filter(i => matchesCurrentCategory(i));
+    alert(`Filtro aplicado: "${sel}". Cola actualizada con ${queue.length} versículo(s).`);
   }
-  document.getElementById('todayCount').textContent = queue.length;
-  updateQueueInfo();
-  saveState();
-}
 
-function getNextIndex(){ if(queue.length>0) return queue.shift(); if(errorsQueue.length>0) return errorsQueue.shift(); return null; }
-
-/* =========================
-   UI: render y flujo
-   ========================= */
-function updateQueueInfo(){ document.getElementById('queueInfo').textContent = `En cola: ${queue.length}  Errores: ${errorsQueue.length}  Practicados: ${practiced.size}  (Filtro: ${currentCategory})`; }
-
-function renderCard(idx){
-  const container = document.getElementById('cardContainer');
-  container.innerHTML = '';
-  if(idx===null || idx===undefined){
-    container.innerHTML = '<div class="small">No hay más versículos para la selección actual.</div>';
-    document.getElementById('checkBtn').style.display='none';
-    document.getElementById('skipBtn').style.display='none';
-    return;
+  /* =========================
+     Mostrar lista de completados 100%
+     ========================= */
+  function updateCompletedList(){
+    const container = document.getElementById('completedItems');
+    const wrapper = document.getElementById('completedList');
+    const arr = Array.from(completedPerfect);
+    if(arr.length === 0){ wrapper.style.display='none'; return; }
+    wrapper.style.display='block';
+    container.innerHTML = arr.map(r => `<div class="small">${r}</div>`).join('');
   }
-  currentIndex = idx;
-  const v = verses[idx];
-  const cats = (v.categories || []).map(c => `<span class="category-badge">${c}</span>`).join(' ');
-  const card = document.createElement('div');
-  card.className='verse-card';
-  card.innerHTML = `<div><strong>Referencia:</strong> ${v.ref} ${cats}</div>
-    <div class="small" style="margin-top:6px">Escribe el versículo (ignora acentos, puntuación y mayúsculas)</div>
-    <textarea id="answerArea" placeholder="Escribe aquí el versículo"></textarea>
-    <div id="resultArea" style="margin-top:8px"></div>`;
-  container.appendChild(card);
-  document.getElementById('checkBtn').style.display='inline-block';
-  document.getElementById('skipBtn').style.display='inline-block';
-  document.getElementById('nextBtn').style.display='none';
-  saveState();
-}
 
-function showDiffResult(res){
-  const ra = document.getElementById('resultArea'); ra.innerHTML = '';
-  const expDiv = document.createElement('div'); expDiv.innerHTML = '<strong>Comparación palabra a palabra:</strong>'; ra.appendChild(expDiv);
-  const line = document.createElement('div');
-  res.diffs.forEach(d=>{
-    const span = document.createElement('span'); span.className='diff-word';
-    if(d.type==='ok'){ span.classList.add('right'); span.textContent = d.expected; }
-    else if(d.type==='wrong'){ span.classList.add('wrong'); span.innerHTML = `<span class="diff-expected">${d.expected}</span> ≠ <span class="diff-missing">${d.actual}</span>`; }
-    else if(d.type==='missing'){ span.classList.add('wrong'); span.innerHTML = `<span class="diff-expected">${d.expected}</span> <span class="diff-missing">[faltó]</span>`; }
-    else if(d.type==='extra'){ span.classList.add('wrong'); span.innerHTML = `<span class="diff-missing">${d.actual}</span> <span class="diff-expected">[extra]</span>`; }
-    line.appendChild(span);
-  });
-  ra.appendChild(line);
-  const score = Math.round(res.score*100);
-  const summary = document.createElement('div'); summary.className='small'; summary.innerHTML = `Precisión: <strong>${score}%</strong>`; ra.appendChild(summary);
-}
-
-/* =========================
-   Eventos principales
-   ========================= */
-document.getElementById('checkBtn').addEventListener('click', ()=>{
-  const ans = document.getElementById('answerArea').value || '';
-  const v = verses[currentIndex];
-  const res = compareVerses(v.text, ans);
-  showDiffResult(res);
-  if(res.allOk){
-    practiced.add(currentIndex);
-    recordDifficulty(currentIndex, true);
-    recordHistory(currentIndex, 'correct');
-    document.getElementById('feedback').textContent = 'Correcto'; document.getElementById('feedback').className='small right';
-    document.getElementById('nextBtn').style.display='inline-block'; document.getElementById('checkBtn').style.display='none'; document.getElementById('skipBtn').style.display='none';
-  } else {
-    if(!errorsQueue.includes(currentIndex)) errorsQueue.push(currentIndex);
-    recordDifficulty(currentIndex, false);
-    recordHistory(currentIndex, 'error');
-    document.getElementById('feedback').textContent = 'Hay errores. Se repetirá más tarde.'; document.getElementById('feedback').className='small wrong';
-    document.getElementById('nextBtn').style.display='inline-block';
-  }
-  updateQueueInfo(); saveState();
-});
-
-document.getElementById('skipBtn').addEventListener('click', ()=>{
-  if(!errorsQueue.includes(currentIndex)) errorsQueue.push(currentIndex);
-  recordHistory(currentIndex, 'error'); recordDifficulty(currentIndex, false);
-  document.getElementById('feedback').textContent = 'Saltado. Se repetirá más tarde.'; document.getElementById('feedback').className='small wrong';
-  saveState(); nextFlow();
-});
-
-document.getElementById('nextBtn').addEventListener('click', nextFlow);
-function nextFlow(){ const nextIdx = getNextIndex(); if(nextIdx===null) renderCard(null); else renderCard(nextIdx); updateQueueInfo(); saveState(); }
-
-/* Inicio / Reset */
-document.getElementById('startBtn').addEventListener('click', ()=>{
-  document.getElementById('sessionArea').style.display='block';
-  prepareDailyQueue(true);
-  const nextIdx = getNextIndex();
-  renderCard(nextIdx);
-});
-document.getElementById('resetProgress').addEventListener('click', ()=>{
-  if(confirm('¿Deseas resetear todo el progreso (practiced, difficulty, historial)?')){
-    localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(DATE_KEY);
-    queue = []; errorsQueue = []; practiced = new Set(); difficulty = {}; history = {}; currentIndex = null;
-    document.getElementById('sessionArea').style.display='none'; alert('Progreso reseteado completamente.');
-  }
-});
-document.getElementById('forceResetPracticed').addEventListener('click', ()=>{
-  if(confirm('¿Forzar reinicio de la lista "practiced"?')){
-    practiced = new Set(); saveState(); alert('practiced reiniciado.');
-  }
-});
-
-/* Historial y export */
-document.getElementById('viewHistory').addEventListener('click', showHistoryModal);
-document.getElementById('exportHistory').addEventListener('click', exportHistoryCSV);
-function showHistoryModal(){ const overlay = document.getElementById('overlay'); const modal = document.getElementById('historyModal'); overlay.style.display='block'; modal.style.display='block';
-  modal.innerHTML = `<h4>Historial por día</h4><div class="small" style="margin-bottom:8px">Última fecha registrada: ${localStorage.getItem(DATE_KEY) || '—'}</div><div style="max-height:60vh;overflow:auto">${renderHistoryTable()}</div><div style="margin-top:12px;display:flex;gap:8px"><button id="closeHistory" class="small-btn">Cerrar</button><button id="clearHistory" class="small-btn">Borrar historial</button></div>`;
-  document.getElementById('closeHistory').addEventListener('click', hideHistoryModal);
-  document.getElementById('clearHistory').addEventListener('click', ()=>{ if(confirm('¿Borrar todo el historial?')){ history={}; saveState(); modal.innerHTML = `<h4>Historial por día</h4><div class="small">Historial borrado.</div><div style="margin-top:12px"><button id="closeHistory2" class="small-btn">Cerrar</button></div>`; document.getElementById('closeHistory2').addEventListener('click', hideHistoryModal); } });
-}
-function hideHistoryModal(){ document.getElementById('overlay').style.display='none'; document.getElementById('historyModal').style.display='none'; }
-function renderHistoryTable(){ const dates = Object.keys(history).sort().reverse(); if(dates.length === 0) return '<div class="small">No hay historial registrado.</div>'; let html = '<table><thead><tr><th>Fecha</th><th>Intentos</th><th>Correctos</th><th>Errores</th><th>Detalles</th></tr></thead><tbody>'; for(const d of dates){ const day = history[d]; const details = (day.details || []).map(x => `${x.ref} (${x.result})`).join('<br/>'); html += `<tr><td>${d}</td><td>${day.attempted}</td><td>${day.correct}</td><td>${day.errors}</td><td>${details}</td></tr>`; } html += '</tbody></table>'; return html; }
-function exportHistoryCSV(){ const rows = [['date','attempted','correct','errors','idx','ref','result','timestamp']]; for(const date of Object.keys(history).sort()){ const day = history[date]; if(day.details && day.details.length){ for(const d of day.details){ rows.push([date, day.attempted, day.correct, day.errors, d.idx, `"${d.ref.replace(/"/g,'""')}"`, d.result, d.timestamp]); } } else rows.push([date, day.attempted, day.correct, day.errors, '', '', '', '']); } const csv = rows.map(r => r.join(',')).join('\n'); const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'versiculos_historial.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
-
-/* =========================
-   Selector (modo libre) - respeta filtro actual
-   ========================= */
-const selectorModal = document.getElementById('selectorModal');
-const selectorList = document.getElementById('selectorList');
-const selectorSearch = document.getElementById('selectorSearch');
-
-document.getElementById('openSelector').addEventListener('click', ()=>{ renderSelectorList(); document.getElementById('overlay').style.display='block'; selectorModal.style.display='block'; });
-document.getElementById('closeSelectorBtn').addEventListener('click', ()=>{ selectorModal.style.display='none'; document.getElementById('overlay').style.display='none'; });
-document.getElementById('selectAllBtn').addEventListener('click', ()=>{ selectorList.querySelectorAll('.selector-checkbox').forEach(b=>b.checked=true); });
-document.getElementById('clearSelectionBtn').addEventListener('click', ()=>{ selectorList.querySelectorAll('.selector-checkbox').forEach(b=>b.checked=false); });
-document.getElementById('addSelectedBtn').addEventListener('click', addSelectedToQueue);
-document.getElementById('practiceSelectedBtn').addEventListener('click', practiceSelectedNow);
-selectorSearch.addEventListener('input', renderSelectorList);
-
-function renderSelectorList(){
-  const q = (selectorSearch.value || '').trim().toLowerCase();
-  selectorList.innerHTML = '';
-  verses.forEach((v, idx) => {
-    const cats = (v.categories || []).map(c => `<span class="category-badge">${c}</span>`).join(' ');
-    const textLower = (v.ref + ' ' + v.text + ' ' + (v.categories||[]).join(' ')).toLowerCase();
-    if(q && !textLower.includes(q)) return;
-    const row = document.createElement('div');
-    row.className = 'verse-row';
-    row.innerHTML = `
-      <input type="checkbox" data-idx="${idx}" class="selector-checkbox" />
-      <div class="verse-ref">${v.ref}<div style="margin-top:6px">${cats}</div></div>
-      <div class="verse-text">${v.text}</div>
-      <div class="selector-actions">
-        <button class="btn-link" data-action="view" data-idx="${idx}">Ver</button>
-        <button class="btn-link" data-action="add" data-idx="${idx}">Añadir</button>
-        <button class="btn-link" data-action="practice" data-idx="${idx}">Practicar ahora</button>
-      </div>
-    `;
-    selectorList.appendChild(row);
-  });
-  selectorList.querySelectorAll('[data-action]').forEach(btn=>{
-    btn.addEventListener('click', (e)=>{
-      const action = btn.getAttribute('data-action');
-      const idx = parseInt(btn.getAttribute('data-idx'));
-      if(action === 'view') openVerseModal(idx);
-      if(action === 'add') addSingleToQueue(idx);
-      if(action === 'practice') practiceSingleNow(idx);
-    });
-  });
-}
-
-function getSelectedIndices(){ return Array.from(selectorList.querySelectorAll('.selector-checkbox')).filter(b=>b.checked).map(b=>parseInt(b.getAttribute('data-idx'))); }
-
-function addSelectedToQueue(){
-  const selected = getSelectedIndices();
-  if(selected.length === 0){ alert('No hay versículos seleccionados.'); return; }
-  const added = [];
-  selected.forEach(idx => {
-    if(matchesCurrentCategory(idx) && !queue.includes(idx) && !errorsQueue.includes(idx)){ queue.push(idx); added.push(idx); }
-  });
-  updateQueueInfo(); saveState();
-  alert(`${added.length} versículo(s) añadidos (respetando filtro).`);
-}
-
-function practiceSelectedNow(){
-  const selected = getSelectedIndices();
-  if(selected.length === 0){ alert('No hay versículos seleccionados.'); return; }
-  const toPractice = selected.filter(idx => matchesCurrentCategory(idx));
-  if(toPractice.length === 0){ alert('Ninguno coincide con el filtro actual.'); return; }
-  toPractice.forEach(idx => { queue = queue.filter(x => x !== idx); errorsQueue = errorsQueue.filter(x => x !== idx); });
-  queue = toPractice.concat(queue);
-  saveState(); selectorModal.style.display='none'; document.getElementById('overlay').style.display='none';
-  document.getElementById('sessionArea').style.display='block';
-  const nextIdx = getNextIndex(); renderCard(nextIdx);
-}
-
-/* Vista rápida */
-const verseModal = document.getElementById('verseModal');
-const verseModalRef = document.getElementById('verseModalRef');
-const verseModalText = document.getElementById('verseModalText');
-const verseAddBtn = document.getElementById('verseAddBtn');
-const versePracticeNowBtn = document.getElementById('versePracticeNowBtn');
-const verseCloseBtn = document.getElementById('verseCloseBtn');
-
-function openVerseModal(idx){
-  const v = verses[idx];
-  verseModalRef.textContent = v.ref;
-  verseModalText.textContent = v.text;
-  verseModal.style.display = 'block';
-  document.getElementById('overlay').style.display = 'block';
-  verseAddBtn.onclick = ()=>{ addSingleToQueue(idx); alert('Añadido (si coincide con filtro).'); };
-  versePracticeNowBtn.onclick = ()=>{ practiceSingleNow(idx); };
-  verseCloseBtn.onclick = ()=>{ verseModal.style.display='none'; document.getElementById('overlay').style.display='none'; };
-}
-function addSingleToQueue(idx){
-  if(!matchesCurrentCategory(idx)){ alert('No coincide con el filtro actual. Cambia la categoría si quieres añadirlo.'); return; }
-  if(!queue.includes(idx) && !errorsQueue.includes(idx)) queue.push(idx);
-  updateQueueInfo(); saveState();
-}
-function practiceSingleNow(idx){
-  if(!matchesCurrentCategory(idx)){ alert('No coincide con el filtro actual. Cambia la categoría si quieres practicarlo.'); return; }
-  queue = queue.filter(x => x !== idx);
-  errorsQueue = errorsQueue.filter(x => x !== idx);
-  queue.unshift(idx);
-  saveState();
-  verseModal.style.display='none'; document.getElementById('overlay').style.display='none';
-  document.getElementById('sessionArea').style.display='block';
-  const nextIdx = getNextIndex(); renderCard(nextIdx);
-}
-
-/* Cerrar modales al hacer clic fuera */
-document.getElementById('overlay').addEventListener('click', ()=>{
-  if(selectorModal.style.display === 'block') selectorModal.style.display='none';
-  if(verseModal.style.display === 'block') verseModal.style.display='none';
-  if(document.getElementById('historyModal').style.display === 'block') hideHistoryModal();
-  document.getElementById('overlay').style.display='none';
-});
-
-/* =========================
-   Cambio de categoría: reconstruye cola y aplica filtro inmediatamente
-   ========================= */
-document.getElementById('categoryFilter').addEventListener('change', onCategoryChange);
-
-function onCategoryChange(){
-  const sel = document.getElementById('categoryFilter').value;
-  currentCategory = sel;
-  // reconstruir cola desde cero respetando filtro
-  queue = [];
+  /* =========================
+     Inicialización final
+     ========================= */
+  loadState();
+  document.getElementById('categoryFilter').value = currentCategory || 'all';
+  queue = queue.filter(i => matchesCurrentCategory(i));
   errorsQueue = errorsQueue.filter(i => matchesCurrentCategory(i));
-  let available = verses.map((v,i)=>i).filter(i => !practiced.has(i) && matchesCurrentCategory(i));
-  if(available.length === 0){
-    practiced = new Set();
-    available = verses.map((v,i)=>i).filter(i => matchesCurrentCategory(i));
+  updateQueueInfo();
+  if(queue.length>0 || errorsQueue.length>0 || practiced.size>0){
+    document.getElementById('sessionArea').style.display='block';
   }
-  for(let i=available.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [available[i],available[j]]=[available[j],available[i]]; }
-  const goal = Math.max(1, parseInt(document.getElementById('dailyGoal').value||5));
-  queue = available.slice(0, Math.min(goal, available.length));
-  updateQueueInfo(); saveState();
-  if(document.getElementById('sessionArea').style.display !== 'none'){
-    const nextIdx = getNextIndex(); renderCard(nextIdx);
-  }
-  alert(`Filtro aplicado: "${sel}". Cola actualizada con ${queue.length} versículo(s).`);
-}
+  renderSelectedSummary();
+  updateCompletedList();
 
-/* =========================
-   Inicialización
-   ========================= */
-loadState();
-document.getElementById('categoryFilter').value = currentCategory || 'all';
-queue = queue.filter(i => matchesCurrentCategory(i));
-errorsQueue = errorsQueue.filter(i => matchesCurrentCategory(i));
-updateQueueInfo();
-if(queue.length>0 || errorsQueue.length>0 || practiced.size>0){
-  document.getElementById('sessionArea').style.display='block';
-}
+}); // DOMContentLoaded end
 </script>
 </body>
 </html>
